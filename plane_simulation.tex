@@ -1,0 +1,246 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+
+\title{3D Flight Simulator: Implementation of \\
+Computer Graphics Concepts}
+\author{Computer Graphics Project Team\\\small{Waseda University}}
+\date{January 2025}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This paper provides a detailed technical analysis of a 3D flight simulator implemented using Three.js, focusing on the mathematical foundations and computer graphics concepts utilized. The implementation demonstrates advanced graphics techniques including quaternion-based rotations, physics-based animations, particle systems, procedural terrain generation, real-time rendering optimizations, minimap integration, HUD systems, and custom shaders.
+\end{abstract}
+
+\section{Mathematical Foundations}
+
+\subsection{3D Transformations}
+The core transformation pipeline uses homogeneous coordinates and matrix operations:
+
+\subsubsection{Rotation Matrices}
+Euler angle rotations are implemented using:
+\begin{equation}
+R_x(\theta) = \begin{pmatrix}
+1 & 0 & 0 & 0 \\
+0 & \cos\theta & -\sin\theta & 0 \\
+0 & \sin\theta & \cos\theta & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+\end{equation}
+
+\subsubsection{Quaternion Rotations}
+Aircraft orientation uses quaternions to avoid gimbal lock:
+\begin{equation}
+q = \cos\left(\frac{\theta}{2}\right) + (x\mathbf{i} + y\mathbf{j} + z\mathbf{k})\sin\left(\frac{\theta}{2}\right)
+\end{equation}
+
+Quaternion multiplication for rotation composition:
+\begin{equation}
+q_1 \otimes q_2 = (w_1w_2 - \vec{v_1}\cdot\vec{v_2}, w_1\vec{v_2} + w_2\vec{v_1} + \vec{v_1}\times\vec{v_2})
+\end{equation}
+
+\section{Flight Physics System}
+
+\subsection{Aerodynamics Model}
+The flight model implements the following forces:
+
+\subsubsection{Lift Force}
+\begin{equation}
+F_{lift} = \frac{1}{2}\rho v^2 S C_L \sin(\alpha)
+\end{equation}
+where:
+\begin{itemize}
+\item $\rho$ = air density (1.225 kg/m\textsuperscript{3})
+\item $v$ = airspeed
+\item $S$ = wing area
+\item $C_L$ = lift coefficient
+\item $\alpha$ = angle of attack
+\end{itemize}
+
+\subsubsection{Drag Force}
+\begin{equation}
+F_{drag} = \frac{1}{2}\rho v^2 S C_D
+\end{equation}
+where $C_D = C_{D0} + kC_L^2$ (parasitic and induced drag)
+
+\section{Particle Systems}
+Particle motion follows Newtonian physics:
+
+\subsection{Position Update}
+\begin{equation}
+\vec{p}(t) = \vec{p}_0 + \vec{v}_0t + \frac{1}{2}\vec{a}t^2
+\end{equation}
+
+\subsection{Particle Life Cycle}
+Opacity calculation:
+\begin{equation}
+opacity = \frac{life_{remaining}}{life_{total}}
+\end{equation}
+
+\section{Terrain Generation}
+Multi-octave noise function:
+\begin{equation}
+height(x,z) = \sum_{i=1}^n A_i\sin(f_ix)\cos(f_iz)
+\end{equation}
+where:
+\begin{itemize}
+\item $A_i$ = amplitude for octave $i$
+\item $f_i$ = frequency for octave $i$
+\end{itemize}
+
+\section{HUD System}
+The HUD displays key metrics such as speed, altitude, pitch, roll, G-force, and fuel percentage. These values are computed using:
+\begin{itemize}
+\item Speed ($v$):
+\begin{equation}
+v = \sqrt{v_x^2 + v_y^2 + v_z^2}
+\end{equation}
+\item Altitude ($h$):
+\begin{equation}
+h = p_y
+\end{equation}
+\item Pitch ($\theta_{pitch}$):
+\begin{equation}
+\theta_{pitch} = \arcsin\left(\frac{v_y}{v}\right)
+\end{equation}
+\item Roll ($\theta_{roll}$):
+\begin{equation}
+\theta_{roll} = \arctan2(v_x, v_z)
+\end{equation}
+\item G-force ($g$):
+\begin{equation}
+g = 1 + \frac{|\vec{a}|}{g_0}
+\end{equation}
+where $g_0$ is the acceleration due to gravity.
+\end{itemize}
+
+\section{Minimap System}
+The minimap provides a top-down view of the airplane's position and heading. The coordinates are scaled as follows:
+\begin{equation}
+x_{map} = \frac{p_x}{scale} + center_x, \quad z_{map} = \frac{p_z}{scale} + center_z
+\end{equation}
+
+The direction vector is computed using:
+\begin{equation}
+\vec{d} = R(\vec{d}_{initial})
+\end{equation}
+where $R$ is the rotation matrix based on the airplane's current orientation.
+
+\section{Missile System}
+Missiles follow a linear trajectory with particle-based trail effects. The missile's position updates are computed using:
+\begin{equation}
+\vec{p}_{missile}(t) = \vec{p}_{launch} + \vec{v}_{missile}t
+\end{equation}
+
+Trail particles decay over time, with their opacity defined as:
+\begin{equation}
+opacity_{trail} = \frac{life_{remaining}}{life_{total}}
+\end{equation}
+
+\section{Shaders and Rendering Techniques}
+Shaders play a critical role in enhancing the visual quality of the simulator. The following shaders are implemented:
+
+\subsection{Sky Gradient Shader}
+A custom shader is used to create a gradient sky. The vertex and fragment shaders are defined as:
+\begin{itemize}
+\item Vertex Shader:
+\begin{equation}
+v_{position} = modelMatrix \cdot vec4(position, 1.0)
+\end{equation}
+\item Fragment Shader:
+\begin{equation}
+color = mix(bottomColor, topColor, max(normalize(v_{worldPosition}).y, 0.0))
+\end{equation}
+\end{itemize}
+
+\subsection{Phong Lighting}
+Implemented in shaders for dynamic lighting effects. The lighting equation is:
+\begin{equation}
+I = k_a i_a + k_d i_d(\vec{L}\cdot\vec{N}) + k_s i_s(\vec{R}\cdot\vec{V})^n
+\end{equation}
+
+\section{Graphics Pipeline Implementation}
+\subsection{Render Loop Algorithm}
+\begin{algorithmic}[1]
+\STATE Update physics state
+\begin{equation}
+\vec{F}_{total} = \vec{F}_{thrust} + \vec{F}_{lift} + \vec{F}_{drag} + \vec{F}_{gravity}
+\end{equation}
+\STATE Update velocities
+\begin{equation}
+\vec{v}_{new} = \vec{v}_{old} + \frac{\vec{F}_{total}}{m}\Delta t
+\end{equation}
+\STATE Update positions
+\begin{equation}
+\vec{p}_{new} = \vec{p}_{old} + \vec{v}_{new}\Delta t
+\end{equation}
+\STATE Update rotations via quaternion
+\begin{equation}
+q_{new} = q_{old} \otimes \Delta q
+\end{equation}
+\STATE Update particle systems
+\STATE Perform collision detection
+\STATE Update camera matrix
+\begin{equation}
+M_{view} = M_{translation}M_{rotation}
+\end{equation}
+\STATE Render scene
+\end{algorithmic}
+
+\section{Lighting and Materials}
+
+\subsection{Phong Lighting Model}
+Implemented using:
+\begin{equation}
+I = k_a i_a + k_d i_d(\vec{L}\cdot\vec{N}) + k_s i_s(\vec{R}\cdot\vec{V})^n
+\end{equation}
+where:
+\begin{itemize}
+\item $k_a$, $k_d$, $k_s$ = material coefficients
+\item $i_a$, $i_d$, $i_s$ = light intensities
+\item $\vec{L}$, $\vec{N}$, $\vec{R}$, $\vec{V}$ = light, normal, reflection, and view vectors
+\end{itemize}
+
+\section{Camera System}
+Camera follows aircraft using smooth interpolation:
+\begin{equation}
+p_{camera} = lerp(p_{current}, p_{target}, \alpha)
+\end{equation}
+where $\alpha = 0.1$ for smooth transition.
+
+\section{Collision Detection}
+Ground collision implemented using height-based detection:
+\begin{equation}
+collision = p_y < terrain_{height}(p_x, p_z) + offset
+\end{equation}
+
+\section{Performance Optimizations}
+
+\subsection{LOD System}
+Level of detail calculation:
+\begin{equation}
+detail_{level} = \left\lfloor\log_2\left(\frac{distance}{base_{distance}}\right)\right\rfloor
+\end{equation}
+
+\section{Results}
+The implementation achieves:
+\begin{itemize}
+\item 60+ FPS rendering performance
+\item Realistic flight physics
+\item Particle system with 1000+ active particles
+\item Dynamic terrain generation
+\item Smooth camera transitions
+\item Real-time collision detection
+\item HUD and minimap integration
+\item Custom shader effects for sky and lighting
+\end{itemize}
+
+\section{Conclusion}
+This implementation demonstrates the practical application of advanced computer graphics concepts, combining mathematical principles with real-time rendering techniques to create an interactive flight simulation environment.
+
+\end{document}

@@ -658,31 +658,37 @@
 
         function handleGroundCollision() {
             const groundHeight = getNoiseHeight(airplane.position.x, airplane.position.z) - 100;
+            const collisionBuffer = 2; // Distance to keep above ground
 
-            if (airplane.position.y < groundHeight + 2) {
-                airplane.position.y = groundHeight + 2;
+            if (airplane.position.y < groundHeight + collisionBuffer) {
+                // Stop vertical movement and place plane above ground
+                airplane.position.y = groundHeight + collisionBuffer;
+                flightData.velocity.y = 0;
 
-                if (flightData.velocity.y < 0) {
-                    flightData.velocity.y = 0;
-                }
+                // Reduce horizontal velocity on collision
+                flightData.velocity.multiplyScalar(0.8);
 
-                flightData.velocity.multiplyScalar(0.95);
-
-                if (Math.abs(flightData.velocity.length()) < 0.1) {
+                // Level out the plane if it's moving very slowly
+                if (flightData.velocity.length() < 0.5) {
                     airplane.rotation.x = 0;
                     airplane.rotation.z = 0;
+                }
+
+                // Add some bounce effect
+                if (flightData.velocity.y < -0.1) {
+                    flightData.velocity.y = Math.abs(flightData.velocity.y) * 0.3; // Bounce with 30% of impact velocity
                 }
             }
         }
 
         // Enhanced environment creation
         function createEnvironment() {
-            scene.fog = new THREE.Fog(0x87ceeb, 500, 3000);
+            scene.fog = new THREE.Fog(0x87ceeb, 1000, 7000);
             renderer.setClearColor(scene.fog.color, 1);
             const terrain = createTerrain();
             scene.add(terrain);
 
-            const skyGeometry = new THREE.SphereGeometry(1000, 32, 32);
+            const skyGeometry = new THREE.SphereGeometry(8000, 32, 32);
             const skyMaterial = new THREE.ShaderMaterial({
                 vertexShader: `
                     varying vec3 vWorldPosition;
@@ -753,7 +759,7 @@
         const originalCreateEnvironment = createEnvironment;
         createEnvironment = function () {
             originalCreateEnvironment();
-            scene.fog = new THREE.Fog(0x87ceeb, 500, 3000);
+            scene.fog = new THREE.Fog(0x87ceeb, 1000, 7000);
             createStars();
         };
 
@@ -797,6 +803,8 @@
         const aerodynamics = new AerodynamicsModel();
 
         camera.position.set(0, 5, 15);
+        camera.far = 20000; // Increase camera far plane
+        camera.updateProjectionMatrix();
         const cameraOffset = new THREE.Vector3(0, 2, 10);
         const cameraLookOffset = new THREE.Vector3(0, 1, -10);
 
